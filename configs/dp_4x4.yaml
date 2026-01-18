@@ -1,0 +1,5 @@
+exp_name: dp_4x4
+
+mdp:
+  world: "4x4"
+  # slip_prob: 0.2

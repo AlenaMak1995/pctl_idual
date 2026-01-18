@@ -1,18 +1,7 @@
-exp_name: smoke_test
+exp_name: dp_smoke
 
 mdp:
-  n_rows: 4
-  n_cols: 4
-  slip_prob: 0.1
-  start: [0, 0]
-  goal: [3, 3]
-
-solver:
-  name: idual
-  max_iters: 50
-
-pctl:
-  constraints:
-    - type: reach_min
-      label: goal
-      bound: 0.9
+  N: 4
+  start: [3, 0]
+  goal: [[0, 3]]
+  slip_prob: 0.2
