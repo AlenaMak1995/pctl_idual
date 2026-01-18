@@ -1,0 +1,9 @@
+# -*- coding: utf-8 -*-
+
+numpy
+scipy
+cvxpy
+matplotlib
+pyyaml
+tqdm
+
