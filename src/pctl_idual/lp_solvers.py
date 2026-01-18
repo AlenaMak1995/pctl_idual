@@ -6,7 +6,7 @@ import cvxpy as cp
 import numpy as np
 import scipy.sparse as sp
 import time
-from gridworld import GridWorld, State, Action
+from pctl_idual.gridworld import GridWorld, State, Action
 
 # =========================
 # LP for shortest path (no PCTL)

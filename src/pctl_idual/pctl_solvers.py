@@ -5,7 +5,7 @@ import cvxpy as cp
 import numpy as np
 import time
 
-from gridworld import GridWorld, State, Action  
+from pctl_idual.gridworld import GridWorld, State, Action  
 
 AugState = Tuple  
 Region = Set[State]

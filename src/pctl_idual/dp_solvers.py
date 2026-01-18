@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 from typing import Dict, Any
-from .gridworld import GridWorld
+from pctl_idual.gridworld import GridWorld
 
 # =========================
 # DP helpers (ground truth)
