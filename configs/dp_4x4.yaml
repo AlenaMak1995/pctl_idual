@@ -2,3 +2,7 @@ exp_name: dp_4x4
 
 mdp:
   world: "4x4"
+run:
+  solver: "both"   # dp | lp | both
+lp:
+  solver: "HIGHS"     # MOSEK | HIGHS | DEFAULT

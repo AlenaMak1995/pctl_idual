@@ -47,6 +47,12 @@ from pctl_idual.dp_solvers import (
     simulate_policy,
 )
 
+from pctl_idual.lp_solvers import (
+    solve_shortest_path_lp,
+    recover_policy_from_x,
+    print_policy_grid
+)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -56,15 +62,33 @@ def main():
     cfg = yaml.safe_load(open(args.config, "r"))
     mdp = build_mdp(cfg["mdp"])
 
-    # --- DP: unconstrained shortest path ---
-    V = value_iteration_shortest_path(mdp)
-    print("DP (unconstrained) optimal cost from START:", V[mdp.start])
+    run_cfg = cfg.get("run", {})
+    solver = run_cfg.get("solver", "both").lower()
 
-    pi = greedy_policy_from_V(mdp, V)
-    traj = simulate_policy(mdp, pi)
+    lp_cfg = cfg.get("lp", {})
+    lp_solver = lp_cfg.get("solver", "MOSEK")
 
-    print("Trajectory under DP (unconstrained):")
-    print(traj)
+    if solver in ("dp", "both"):
+        V = value_iteration_shortest_path(mdp)
+        print("DP (unconstrained) optimal cost from START:", V[mdp.start])
+
+        pi = greedy_policy_from_V(mdp, V)
+        traj = simulate_policy(mdp, pi)
+
+        print("Trajectory under DP (unconstrained):")
+        print(traj)
+
+    if solver in ("lp", "both"):
+        J_lp, x_opt, t_lp = solve_shortest_path_lp(mdp, solver=lp_solver)
+        print("LP cost:", J_lp, "   solve time:", t_lp)
+
+        pi_lp = recover_policy_from_x(mdp, x_opt)
+        print("\nPolicy from LP:")
+        print_policy_grid(mdp, pi_lp)
+
+    if solver not in ("dp", "lp", "both"):
+        raise ValueError(f"Unknown run.solver={solver}. Use dp | lp | both.")
+
 
 
 if __name__ == "__main__":

@@ -5,3 +5,6 @@ __pycache__/
 .DS_Store
 results/
 figures/tmp/
+# MOSEK license (never commit)
+mosek.lic
+mosek/
