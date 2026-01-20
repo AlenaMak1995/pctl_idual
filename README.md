@@ -3,7 +3,8 @@
 This repository provides:
 - a GridWorld Markov Decision Process (MDP) framework,
 - a Dynamic Programming (DP) solver for shortest-path problems (ground truth),
-- LP- and i-dual–based solvers (with PCTL constraints).
+- a Linear Programming (LP) solver for shortest-path problems (ground truth) with PCTL constraints,
+- i-dual–based solver with PCTL constraints.
 
 The DP solver serves as an unconstrained baseline and ground truth
 against which LP and i-dual methods are compared.
@@ -23,17 +24,34 @@ We consider a finite-state GridWorld MDP where:
 
 ![4x4 grid](experiments/figures/grid_4x4.png)
 
+**State space:** grid cells `(row, col)`  
+**Actions:** up, down, left, right  
+**Start state:** `S = (3, 0)`  
+**Goal state:** `G = (0, 3)` (absorbing)
+
+**Cost structure**
+- Four highlighted cells (shown in the figure) have **non-unit costs**
+- All remaining cells have default cost **1**
+
+This example is used as a small-scale sanity check for the Dynamic
+Programming (DP) shortest-path solver.
+
 ### Example GridWorld (20×20)
 
-![4x4 grid](experiments/figures/grid_20x20.png)
+![20x20 grid](experiments/figures/grid_20x20.png)
 
-Start state: $s_0 = (19,0)$
-Target/goal state: $g = (0,19)$
+**State space:** grid cells `(row, col)`  
+**Actions:** up, down, left, right  
+**Start state:** `S = (19, 0)`  
+**Goal state:** `G = (0, 19)` (absorbing)
 
-Cost structure (cost of \emph{entering} the successor cell):
-Blue region $L$: very cheap cells, cost $0.1$
-Red region $H$: expensive cells, cost $10$
- All other cells (including $G2$ and $G3$): default cost $1$
+**Cost structure**
+- **Blue region (L):** low-cost cells, cost **0.1**
+- **Red region (H):** high-cost cells, cost **10**
+- **All remaining cells:** default cost **1**
+
+This example demonstrates how heterogeneous cost regions influence the
+optimal policy, which avoids high-cost regions whenever possible.
 
 ---
 
@@ -69,6 +87,7 @@ mdp:
   rect_costs:
     - [16, 16, 19, 19, 0.1]
     - [5, 5, 14, 14, 10.0]
+
 
 
 
