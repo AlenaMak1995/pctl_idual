@@ -23,6 +23,10 @@ We consider a finite-state GridWorld MDP where:
 
 ![4x4 grid](experiments/figures/grid_4x4.png)
 
+### Example GridWorld (20×20)
+
+![4x4 grid](experiments/figures/grid_20x20.png)
+
 ---
 
 ## 2. Dynamic Programming (Ground Truth)
@@ -57,4 +61,5 @@ mdp:
   rect_costs:
     - [16, 16, 19, 19, 0.1]
     - [5, 5, 14, 14, 10.0]
+
 
