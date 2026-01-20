@@ -67,21 +67,22 @@ The DP solver iterates this update until convergence.
 
 ## 3. Running a DP experiment
 
-### Step 1: Create a YAML config
+### Step 1: Create a YAML config (as an example, we can create the grid 20x20 (not including the G2 and G3 areas yet)
 
 ```yaml
 exp_name: dp_custom
 
 mdp:
   world: "custom"
-  N: 50
-  start: [49, 0]
-  goal: [[0, 49]]
+  N: 20
+  start: [19, 0]
+  goal: [[0, 19]]
   slip_prob: 0.0
   default_cost: 1.0
   rect_costs:
     - [16, 16, 19, 19, 0.1]
     - [5, 5, 14, 14, 10.0]
+
 
 
 
