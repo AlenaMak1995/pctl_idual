@@ -57,16 +57,11 @@ optimal policy, which avoids high-cost regions whenever possible.
 
 ## 2. Dynamic Programming (Ground Truth)
 
-The DP solver computes the **unconstrained shortest-path value function**
-using value iteration:
+The value function V(s) satisfies the Bellman optimality equation:
 
-\[
-V(s) = \min_a \sum_{s'} P(s' \mid s, a)\left[c(s,a,s') + V(s')\right]
-\]
+V(s) = min_a sum_{s'} P(s' | s, a) [ c(s, a, s') + V(s') ].
 
-This provides the optimal expected cost-to-go from every state.
-
-From the value function, we extract a greedy policy and simulate a trajectory.
+The DP solver iterates this update until convergence.
 
 ---
 
@@ -87,6 +82,7 @@ mdp:
   rect_costs:
     - [16, 16, 19, 19, 0.1]
     - [5, 5, 14, 14, 10.0]
+
 
 
 
