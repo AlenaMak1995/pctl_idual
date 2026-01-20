@@ -21,7 +21,7 @@ We consider a finite-state GridWorld MDP where:
 
 ### Example GridWorld (4×4)
 
-![4x4 grid](examples/figures/grid_4x4.png)
+![4x4 grid](experiments/figures/grid_4x4.png)
 
 ---
 
@@ -57,3 +57,4 @@ mdp:
   rect_costs:
     - [16, 16, 19, 19, 0.1]
     - [5, 5, 14, 14, 10.0]
+
