@@ -1,0 +1,4 @@
+exp_name: dp_20x20
+
+mdp:
+  world: "20x20"
