@@ -80,9 +80,12 @@ mdp:
   slip_prob: 0.0
   default_cost: 1.0
   rect_costs:
-    - [16, 16, 19, 19, 0.1]
-    - [5, 5, 14, 14, 10.0]
+    - [16, 16, 19, 19, 0.1] #cheap block
+    - [5, 5, 14, 14, 10.0] #expensive block 
 
+### Step 2: Run the experiment
+
+python scripts/run_experiment.py --config configs/dp_custom.yaml
 
 
 
