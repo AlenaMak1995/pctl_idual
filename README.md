@@ -27,6 +27,14 @@ We consider a finite-state GridWorld MDP where:
 
 ![4x4 grid](experiments/figures/grid_20x20.png)
 
+Start state: $s_0 = (19,0)$
+Target/goal state: $g = (0,19)$
+
+Cost structure (cost of \emph{entering} the successor cell):
+Blue region $L$: very cheap cells, cost $0.1$
+Red region $H$: expensive cells, cost $10$
+ All other cells (including $G2$ and $G3$): default cost $1$
+
 ---
 
 ## 2. Dynamic Programming (Ground Truth)
@@ -61,5 +69,6 @@ mdp:
   rect_costs:
     - [16, 16, 19, 19, 0.1]
     - [5, 5, 14, 14, 10.0]
+
 
 
