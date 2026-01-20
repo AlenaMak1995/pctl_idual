@@ -113,6 +113,15 @@ The script prints:
 **Trajectory under DP (unconstrained):**
 `[(19, 0), (19, 1), (19, 2), (19, 3), (19, 4), (19, 5), (19, 6), (19, 7), (19, 8), (19, 9), (19, 10), (19, 11), (19, 12), (19, 13), (19, 14), (19, 15), (19, 16), (18, 16), (17, 16), (16, 16), (16, 17), (16, 18), (16, 19), (15, 19), (14, 19), (13, 19), (12, 19), (11, 19), (10, 19), (9, 19), (8, 19), (7, 19), (6, 19), (5, 19), (4, 19), (3, 19), (2, 19), (1, 19), (0, 19)]`
 
+### Optional: MOSEK (faster LP/QP solves)
+
+If you have a MOSEK license, set:
+
+export MOSEKLM_LICENSE_FILE="/path/to/mosek.lic"
+
+Otherwise, CVXPY will fall back to open-source solvers (SCS/OSQP/ECOS),
+which may be slower.
+
 
 
 
