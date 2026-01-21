@@ -564,6 +564,7 @@ Final policy (collapsed to base MDP):
  S   →   →   →   →   ↑   →   →   →   →   →   →   →   →   →   →   →   ↑   ·   ·  
 ```
 
+## 7. I-Dual VS LP running time with PCTL constraints
 
 
 
