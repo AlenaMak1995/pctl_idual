@@ -343,7 +343,27 @@ Final policy (collapsed to base MDP):
  →   ↑   →   ↑  
  S   →   ↑   ·
 ```
- ### 20×20 scaling example
+
+### 20×20 Grid: Scaling demo (corridor Until constraint)
+
+This experiment demonstrates that the LP+PCTL formulation works beyond the toy 4×4 case.
+We define a **non-rectangular corridor region** `G2` (represented as a union of rectangles in YAML)
+and a single-cell region `G3 = {(11,5)}`. We then enforce the probabilistic until constraint:
+
+`P ≥ 0.7 [ G2 U G3 ]`
+
+**Interpretation:** with probability at least 0.7, the agent must stay in the corridor `G2`
+until it reaches the target cell `G3`.
+
+**What we expect**
+- The solver should return a feasible policy.
+- The reported probability `P(G2U_G3)` should be close to `0.7` (often tight).
+- A typical trajectory should follow the corridor to reach `(11,5)` before heading to the goal.
+- Runtime should increase compared to 4×4, motivating incremental methods (i-dual).
+
+**What we observe**
+
+
 
 
 
