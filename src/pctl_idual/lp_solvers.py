@@ -185,6 +185,27 @@ def print_policy_grid(mdp: GridWorld, policy, G2=None, G3=None):
                 else:
                     row += f" {arrow[best_a]}  "
         print(row)
+        
+def collapse_augmented_policy_to_base(mdp_aug, policy_aug):
+    """
+    For each base state s, combine action probabilities
+    across *all* flag valuations into one base policy.
+    (simple average over reachable augmented states)
+    """
+    base_policy = {s: {} for s in mdp_aug.base.states}
 
+    for st_aug, act_probs in policy_aug.items():
+        s = st_aug[0]  # physical state
+        for a, p in act_probs.items():
+            base_policy[s][a] = base_policy[s].get(a, 0.0) + p
+
+    # normalize each state's probs
+    for s, ap in base_policy.items():
+        total = sum(ap.values())
+        if total > 0:
+            for a in ap:
+                ap[a] /= total
+
+    return base_policy
                
 
