@@ -116,7 +116,7 @@ The script prints:
 ## 4. Linear Programming 
 
 ```yaml
-exp_name: dp_custom
+exp_name: lp_custom
 
 mdp:
   world: "custom" #"4x4", "20x20"
@@ -144,6 +144,7 @@ export MOSEKLM_LICENSE_FILE="/path/to/mosek.lic"
 
 Otherwise, CVXPY will fall back to open-source solvers (SCS/OSQP/ECOS),
 which may be slower.
+
 
 
 
