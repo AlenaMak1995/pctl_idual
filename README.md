@@ -398,6 +398,7 @@ Final policy (collapsed to base MDP):
  ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   →   ↑   ↑  
  S   →   →   →   →   ↑   →   →   →   →   →   →   →   →   →   →   ↑   →   ↑   ↑
 ```
+## 6. I-Dual Programming with PCTL constraints
 
 
 
