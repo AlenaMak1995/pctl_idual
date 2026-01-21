@@ -484,7 +484,7 @@ Final policy (collapsed to base MDP):
 
 ```
 
-### 20x20 grid no obkectove heuristic used
+### 20x20 grid, no objective heuristic used
 ```
 === timing summary ===
 total i-dual time: 875.4739737199998
@@ -565,6 +565,7 @@ Final policy (collapsed to base MDP):
 ```
 
 ## 7. I-Dual VS LP running time with PCTL constraints
+
 
 
 
