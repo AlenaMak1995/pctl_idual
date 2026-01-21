@@ -35,6 +35,16 @@ from pctl_idual.pctl_solvers import (
     simulate_policy_aug
 )
 
+from pctl_idual.idual_solvers import (
+    compute_in_flow_aug,
+    solve_lp3_aug,
+    i_dual_aug,
+    i_dual_aug_trevizan,
+    compute_max_prob_visit_region_before_goal,
+    compute_min_prob_visit_region_before_goal,
+    compute_max_prob_until_before_goal,
+    compute_min_prob_until_before_goal,
+)
 def build_mdp(mdp_cfg):
     world = mdp_cfg["world"]
 
@@ -65,6 +75,7 @@ def build_mdp(mdp_cfg):
     elif world == "4x4_pctl":
         mdp = make_4x4_pctl_world()
 
+
     else:
         raise ValueError(f"Unknown world type: {world}")
 
@@ -72,22 +83,45 @@ def build_mdp(mdp_cfg):
 
 def parse_region(spec, N):
     """
-    spec can be:
-      - "all": whole grid
-      - {"cells": [[r,c], ...]}
-      - {"rect": [r0, c0, r1, c1]}  inclusive bounds like your make_grid_world uses
+    Parse a region spec from YAML into a set of (row, col) cells.
+
+    Supported formats:
+      - {"rect": [r_min, c_min, r_max, c_max]}  (inclusive)
+      - {"cells": [[r,c], [r,c], ...]}
+      - {"union": [ <region_spec>, <region_spec>, ... ]}  (recursive)
     """
-    if spec == "all":
-        return {(r, c) for r in range(N) for c in range(N)}
+    if not isinstance(spec, dict):
+        raise ValueError(f"Bad region spec (expected dict): {spec}")
 
-    if isinstance(spec, dict) and "cells" in spec:
-        return {tuple(x) for x in spec["cells"]}
+    # --- rectangle ---
+    if "rect" in spec:
+        r1, c1, r2, c2 = spec["rect"]
+        if not (0 <= r1 <= r2 < N and 0 <= c1 <= c2 < N):
+            raise ValueError(f"rect out of bounds for N={N}: {spec['rect']}")
+        return {(r, c) for r in range(r1, r2 + 1) for c in range(c1, c2 + 1)}
 
-    if isinstance(spec, dict) and "rect" in spec:
-        r0, c0, r1, c1 = spec["rect"]
-        return {(r, c) for r in range(r0, r1 + 1) for c in range(c0, c1 + 1)}
+    # --- explicit cells ---
+    if "cells" in spec:
+        cells = set()
+        for rc in spec["cells"]:
+            r, c = rc
+            if not (0 <= r < N and 0 <= c < N):
+                raise ValueError(f"cell out of bounds for N={N}: {rc}")
+            cells.add((r, c))
+        return cells
+
+    # --- union of specs (recursive) ---
+    if "union" in spec:
+        parts = spec["union"]
+        if not isinstance(parts, list) or len(parts) == 0:
+            raise ValueError(f"union must be a non-empty list: {spec}")
+        region = set()
+        for part in parts:
+            region |= parse_region(part, N)  # recursion
+        return region
 
     raise ValueError(f"Bad region spec: {spec}")
+
 
 def main():
     parser = argparse.ArgumentParser()
