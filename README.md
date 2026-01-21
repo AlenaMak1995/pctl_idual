@@ -115,6 +115,10 @@ The script prints:
 
 ## 4. Linear Programming 
 
+The LP formulation uses occupation measures to compute shortest paths.
+
+#### Example LP configuration
+
 ```yaml
 exp_name: lp_custom
 
@@ -145,13 +149,20 @@ export MOSEKLM_LICENSE_FILE="/path/to/mosek.lic"
 Otherwise, CVXPY will fall back to open-source solvers (SCS/OSQP/ECOS),
 which may be slower.
 
-Output
+#### LP Output Example
 
-LP cost: 31.700000000708798    solve time: 0.07632921205367893
+```bash
+LP cost: 31.700000000708798
 
-Policy from LP:
- ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   G  
+solve time: 0.07632921205367893
+```
+
+#### Extracted policy visualization
+
+ ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   G 
+ 
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ 
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
@@ -170,6 +181,7 @@ Policy from LP:
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   →   →   ↑  
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   →   →   ↑  
  S   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑   →   ↑   ·  
+
 
 
 
