@@ -288,6 +288,13 @@ Final policy (collapsed to base MDP):
  ### Region avoidance (hard constraint)
  
  P(ever visit G4) ≤ 0
+
+**What we expect:** The policy must avoid G4 entirely, cost may increase due to detours, reachability of the goal must still be guaranteed
+
+**What we observe:** P(visit G4) = 0, cost increases from 10.0 → 15.0, policy reroutes along the left edge, P(G2U_G3) ≈ 1 emerges as a consequence, not a requirement
+
+This demonstrates that region constraints are enforced exactly and meaningfully alter the policy.
+
 ```
  === Global LP with PCTL + Until ===
 Optimal expected cost: 15.000000000001585
@@ -328,6 +335,7 @@ Final policy (collapsed to base MDP):
  S   →   ↑   ·
 ```
  ### 20×20 scaling example
+
 
 
 
