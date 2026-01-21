@@ -352,6 +352,8 @@ and a single-cell region `G3 = {(11,5)}`. We then enforce the probabilistic unti
 
 `P ≥ 0.7 [ G2 U G3 ]`
 
+![20x20 pctl](experiments/figures/20x20_pctl.png)
+
 **Interpretation:** with probability at least 0.7, the agent must stay in the corridor `G2`
 until it reaches the target cell `G3`.
 
@@ -396,6 +398,7 @@ Final policy (collapsed to base MDP):
  ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   →   ↑   ↑  
  S   →   →   →   →   ↑   →   →   →   →   →   →   →   →   →   →   ↑   →   ↑   ↑
 ```
+
 
 
 
