@@ -254,6 +254,19 @@ pctl:
 ## PCTL Correctness Demonstrations
 
 ### Baseline 4×4 Grid (no PCTL)
+
+**What we do:**  We solve the LP without any PCTL region or until constraints, enforcing only:
+
+`P(◊GOAL)=1`
+
+This serves as the unconstrained ground truth.
+
+**What we expect:** The policy minimizes expected cost, no preference for visiting G2 or G3, G4 may be visited if it is cost-optimal
+
+**What we observe:** Optimal cost: 10.0, P(G2U_G3) ≈ 0, policy takes the shortest path to the goal
+
+This confirms that the LP solver reproduces the unconstrained optimum.
+
 ```
 === Global LP with PCTL + Until ===
 Optimal expected cost: 10.000000000205741
@@ -315,6 +328,7 @@ Final policy (collapsed to base MDP):
  S   →   ↑   ·
 ```
  ### 20×20 scaling example
+
 
 
 
