@@ -455,7 +455,34 @@ Final policy (collapsed to base MDP):
 
 ```
 
+### Until constraint
 
+ `P ≥ 0.7 [ G2 U G3 ]`
+```
+ === i-dual (Trevizan-style) with PCTL + Until ===
+P(reach GOAL): 1.0
+[i-dual] P(ever visit G2): 0.7
+[i-dual] P(ever visit G3): 0.7
+[i-dual] P(ever visit G4): 1.0
+[i-dual] P(G2U_G3): 0.7
+
+=== timing summary ===
+total i-dual time: 0.4242631259839982
+final LP time: 0.0004420280456542969
+iterations: 7
+final envelope size: 27
+i-dual objective: 11.399999999999999
+
+Trajectory under i-dual policy (base states):
+[(3, 0), (2, 0), (2, 1), (1, 1), (0, 1), (0, 2), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ ·   →   →   G  
+ ·   ↑   ·   ↑  
+ →   ↑   →   ↑  
+ S   →   ↑   ·
+
+```
 
 ### 20x20 grid no obkectove heuristic used
 ```
@@ -498,7 +525,9 @@ Final policy (collapsed to base MDP):
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   →   →   →   ↑  
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   →   →   ↑  
- ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   ↑   ↑   ↑  
+ ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   ↑   ↑   ↑
+ ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   →   →   →   ↑  
+ S   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑   ·   ·   ·  
 
  ```
 ### 20x20 grid with objective heuristic
@@ -544,6 +573,7 @@ Final policy (collapsed to base MDP):
  ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   →   →   →   ↑  
  S   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑   ·   ·   · 
 ```
+
 
 
 
