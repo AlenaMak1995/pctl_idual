@@ -184,6 +184,8 @@ solve time: 0.07632921205367893
 
 ## 5. Linear Programming with PCTL constraints
 
+![4x4 pctl](experiments/figures/4x4_pctl.png)
+
 ```yaml
 mdp:
   world: "4x4_pctl"   
@@ -293,6 +295,7 @@ Final policy (collapsed to base MDP):
  S   →   ↑   ·
 ```
  ### 20×20 scaling example
+
 
 
 
