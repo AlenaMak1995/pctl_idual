@@ -287,7 +287,7 @@ Final policy (collapsed to base MDP):
 ```
  ### Region avoidance (hard constraint)
  
- P(ever visit G4) ≤ 0
+ `P(ever visit G4) ≤ 0`
 
 **What we expect:** The policy must avoid G4 entirely, cost may increase due to detours, reachability of the goal must still be guaranteed
 
@@ -315,7 +315,16 @@ Final policy (collapsed to base MDP):
 ```
  ### Until constraint
 
- P ≥ 0.7 [ G2 U G3 ]
+ `P ≥ 0.7 [ G2 U G3 ]`
+ 
+`With probability at least 0.7, the agent must remain in G2 until it reaches G3.`
+
+**What we expect:** The policy must deliberately route through G2, reaching G3 before leaving G2 becomes prioritized, the constraint should bind tightly
+
+**What we observe:** P(G2U_G3) ≈ 0.7 (tight), P(visit G2) ≈ 0.7, P(visit G3) ≈ 0.7, cost increases moderately: 10.0 → 11.4, policy explicitly enforces the G2 → G3 ordering
+
+This confirms the semantic correctness of the until operator in the LP formulation.
+
 ```
 === Global LP with PCTL + Until ===
 Optimal expected cost: 11.40000000000045
@@ -335,6 +344,7 @@ Final policy (collapsed to base MDP):
  S   →   ↑   ·
 ```
  ### 20×20 scaling example
+
 
 
 
