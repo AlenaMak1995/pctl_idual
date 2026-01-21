@@ -400,8 +400,67 @@ Final policy (collapsed to base MDP):
 ```
 ## 6. I-Dual Programming with PCTL constraints
 
+Base
+```
+=== i-dual (Trevizan-style) with PCTL + Until ===
+P(reach GOAL): 1.0
+[i-dual] P(ever visit G2): 0.0
+[i-dual] P(ever visit G3): 0.0
+[i-dual] P(ever visit G4): 1.0
+[i-dual] P(G2U_G3): 0.0
 
+=== timing summary ===
+total i-dual time: 0.26384166488423944
+final LP time: 0.00021314620971679688
+iterations: 7
+final envelope size: 13
+i-dual objective: 10.0
 
+Trajectory under i-dual policy (base states):
+[(3, 0), (3, 1), (3, 2), (2, 2), (2, 3), (1, 3), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ ·   ·   ·   G  
+ ·   ·   ·   ↑  
+ ·   ·   →   ↑  
+ S   →   ↑   ·  
+```
+ ### Region avoidance (hard constraint)
+ 
+ `P(ever visit G4) ≤ 0`
+
+ Without probability heuristic
+
+```
+=== i-dual (Trevizan-style) with PCTL + Until ===
+P(reach GOAL): 0.9999999965134042
+[i-dual] P(ever visit G2): 0.9999999965134042
+[i-dual] P(ever visit G3): 0.9999999965134042
+[i-dual] P(ever visit G4): 0.0
+[i-dual] P(G2U_G3): 0.9999999833016845
+
+=== timing summary ===
+total i-dual time: 5.75593291351106
+final LP time: 0.0013849735260009766
+iterations: 35
+final envelope size: 65
+i-dual objective: 15.000000039670944
+
+Trajectory under i-dual policy (base states):
+[(3, 0), (2, 0), (1, 0), (0, 0), (0, 1), (0, 2), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ →   →   →   G  
+ ↑   ·   ·   ·  
+ ↑   ·   ·   ·  
+ S   ·   ·   ·
+
+```
+
+ With probability heuristic
+```
+
+```
 
 
 
