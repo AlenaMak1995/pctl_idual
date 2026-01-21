@@ -186,6 +186,24 @@ solve time: 0.07632921205367893
 
 ![4x4 pctl](experiments/figures/4x4_pctl.png)
 
+**GridWorld layout and regions**
+
+**Start:** `S = (3,0`)
+
+**Goal:** `G = (0,3)` (absorbing)
+
+Cell costs are heterogeneous
+
+Regions:
+
+**G2:** `row 2, cols 0–1`
+
+**G3:** `row 1, cols 0–1`
+
+**G4:** `rows 2–3, cols 1–3`
+
+(Note: regions may overlap, e.g., G2 ∩ G4 ≠ ∅)
+
 ```yaml
 mdp:
   world: "4x4_pctl"   
@@ -295,6 +313,7 @@ Final policy (collapsed to base MDP):
  S   →   ↑   ·
 ```
  ### 20×20 scaling example
+
 
 
 
