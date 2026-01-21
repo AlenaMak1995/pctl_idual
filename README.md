@@ -113,6 +113,27 @@ The script prints:
 **Trajectory under DP (unconstrained):**
 `[(19, 0), (19, 1), (19, 2), (19, 3), (19, 4), (19, 5), (19, 6), (19, 7), (19, 8), (19, 9), (19, 10), (19, 11), (19, 12), (19, 13), (19, 14), (19, 15), (19, 16), (18, 16), (17, 16), (16, 16), (16, 17), (16, 18), (16, 19), (15, 19), (14, 19), (13, 19), (12, 19), (11, 19), (10, 19), (9, 19), (8, 19), (7, 19), (6, 19), (5, 19), (4, 19), (3, 19), (2, 19), (1, 19), (0, 19)]`
 
+## 4. Linear Programming 
+
+```yaml
+exp_name: dp_custom
+
+mdp:
+  world: "custom" #"4x4", "20x20"
+  N: 20
+  start: [19, 0]
+  goal: [[0, 19]]
+  slip_prob: 0.0
+  default_cost: 1.0
+  rect_costs:
+    - [16, 16, 19, 19, 0.1]   # cheap block
+    - [5, 5, 14, 14, 10.0]    # expensive block
+run:
+  solver: "lp"   # dp | lp | both
+lp:
+  solver: "MOSEK"     # MOSEK | HIGHS | DEFAULT
+```
+
 ### Optional: MOSEK (faster LP/QP solves)
 
 If you have a MOSEK license, set:
@@ -123,6 +144,7 @@ export MOSEKLM_LICENSE_FILE="/path/to/mosek.lic"
 
 Otherwise, CVXPY will fall back to open-source solvers (SCS/OSQP/ECOS),
 which may be slower.
+
 
 
 
