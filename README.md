@@ -184,12 +184,115 @@ solve time: 0.07632921205367893
 
 ## 5. Linear Programming with PCTL constraints
 
+```yaml
+mdp:
+  world: "4x4_pctl"   
 
+run:
+  solver: "pctl_lp"
 
+lp:
+  solver: "MOSEK"     # MOSEK | HIGHS | DEFAULT
 
+pctl:
+  p_goal_min: 1.0
 
+  # Define named regions (flags)
+  flags:
+    - name: "G2"
+      region:
+        rect: [2, 0, 2, 1]     # row 2, cols 0..1
+    - name: "G3"
+      region:
+        rect: [1, 0, 1, 1]     # row 1, cols 0..1
+    - name: "G4"
+      region:
+        rect: [2, 1, 3, 3]     # rows 2..3, cols 1..3
 
+  # Define Until specs by name
+  until_specs:
+    - name: "G2U_G3"
+      A: "G2"
+      B: "G3"
 
+  # Region constraints
+  region_constraints: []
+  # - type: "visit_region_max"
+  #   region: "G4"
+  #   p: 0.0
+
+  # Until constraints
+  until_constraints: 
+
+  - type: "until_min"
+    until: "G2U_G3"
+    p: 0.7
+```
+
+## PCTL Correctness Demonstrations
+
+### Baseline 4×4 Grid (no PCTL)
+```
+=== Global LP with PCTL + Until ===
+Optimal expected cost: 10.000000000205741
+P(reach GOAL): 1.0000000000034321
+P(ever visit G2): 7.102447589347438e-12
+P(ever visit G4): 1.0000000000009337
+P(ever visit G3): 4.648578719501556e-12
+P(G2U_G3): 3.390368501480557e-12
+Time taken to solve dual LP: 0.047 s
+
+Trajectory under PCTL-constrained policy (base states): [(3, 0), (3, 1), (3, 2), (2, 2), (2, 3), (1, 3), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ ·   ·   ·   G  
+ ·   ·   ·   ↑  
+ ·   ·   →   ↑  
+ S   →   ↑   ·  
+```
+ ### Region avoidance (hard constraint)
+ 
+ P(ever visit G4) ≤ 0
+```
+ === Global LP with PCTL + Until ===
+Optimal expected cost: 15.000000000001585
+P(reach GOAL): 1.0000000000000144
+P(ever visit G2): 1.0000000000000036
+P(ever visit G4): 0.0
+P(ever visit G3): 1.000000000000003
+P(G2U_G3): 0.9999999999999674
+Time taken to solve dual LP: 0.046 s
+
+Trajectory under PCTL-constrained policy (base states): [(3, 0), (2, 0), (1, 0), (0, 0), (0, 1), (0, 2), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ →   →   →   G  
+ ↑   ·   ·   ·  
+ ↑   ·   ·   ·  
+ S   ·   ·   · 
+```
+ ### Until constraint
+
+ P ≥ 0.7 [ G2 U G3 ]
+```
+=== Global LP with PCTL + Until ===
+Optimal expected cost: 11.40000000000045
+P(reach GOAL): 1.0000000000000173
+P(ever visit G2): 0.7000000000000306
+P(ever visit G4): 1.0000000000000122
+P(ever visit G3): 0.7000000000000218
+P(G2U_G3): 0.7000000000000184
+Time taken to solve dual LP: 0.045 s
+
+Trajectory under PCTL-constrained policy (base states): [(3, 0), (2, 0), (2, 1), (1, 1), (0, 1), (0, 2), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ ·   →   →   G  
+ ·   ↑   ·   ↑  
+ →   ↑   →   ↑  
+ S   →   ↑   ·
+```
+ ### 20×20 scaling example
 
 
 
