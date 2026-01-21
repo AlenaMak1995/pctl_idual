@@ -117,10 +117,13 @@ The script prints:
 
 If you have a MOSEK license, set:
 
+```bash
 export MOSEKLM_LICENSE_FILE="/path/to/mosek.lic"
+```
 
 Otherwise, CVXPY will fall back to open-source solvers (SCS/OSQP/ECOS),
 which may be slower.
+
 
 
 
