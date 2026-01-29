@@ -1,11 +1,11 @@
 mdp:
-  world: "20x20"   
+  world: "20x20"
 
 run:
-  solver: "pctl_lp"
+  solver: "idual_trevizan"     # dp | lp | both | pctl_lp | idual_trevizan
 
 lp:
-  solver: "MOSEK"     # MOSEK | HIGHS | DEFAULT
+  solver: "MOSEK"  
 
 pctl:
   p_goal_min: 1.0
@@ -29,12 +29,18 @@ pctl:
       B: "G3"
 
   # --- Constraints ---
-  region_constraints: 
-    - type: "visit_region_min"
-      region: "G2"
+  region_constraints: []
+
+  until_constraints:
+    - type: "until_min"
+      until: "G2U_G3"
       p: 0.7
 
-  until_constraints: []
-    # - type: "until_min"
-    #   until: "G2U_G3"
-    #   p: 0.3
+idual:
+  # Heuristic toggles (to run ablations from YAML)
+  use_cost_heuristic: true
+  use_region_heuristic_lower: false
+  use_region_heuristic_upper: false
+  use_until_heuristic_lower: true
+  use_until_heuristic_upper: false
+

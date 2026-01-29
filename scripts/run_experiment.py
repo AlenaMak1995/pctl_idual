@@ -38,7 +38,6 @@ from pctl_idual.pctl_solvers import (
 from pctl_idual.idual_solvers import (
     compute_in_flow_aug,
     solve_lp3_aug,
-    i_dual_aug,
     i_dual_aug_trevizan,
     compute_max_prob_visit_region_before_goal,
     compute_min_prob_visit_region_before_goal,
@@ -122,6 +121,47 @@ def parse_region(spec, N):
 
     raise ValueError(f"Bad region spec: {spec}")
 
+def build_augmented_from_pctl_cfg(mdp, pctl_cfg):
+    p_goal_min = float(pctl_cfg.get("p_goal_min", 1.0))
+
+    # Build regions dict from flags
+    regions = {}
+    for f in pctl_cfg.get("flags", []):
+        name = f["name"]
+        regions[name] = parse_region(f["region"], mdp.N)
+
+    flags = [RegionFlagSpec(name, regions[name]) for name in regions]
+
+    # Until specs
+    until_specs = []
+    for us in pctl_cfg.get("until_specs", []):
+        until_specs.append(
+            UntilSpec(
+                us["name"],
+                A_region=regions[us["A"]],
+                B_region=regions[us["B"]],
+            )
+        )
+
+    mdp_aug = AugmentedMDP(mdp, flags=flags, until_specs=until_specs)
+
+    # Region constraints
+    region_constraints = []
+    for rc in pctl_cfg.get("region_constraints", []):
+        region_constraints.append(
+            PCTLRegionConstraint(rc["type"], rc["region"], float(rc["p"]))
+        )
+
+    # Until constraints
+    until_constraints = []
+    for uc in pctl_cfg.get("until_constraints", []):
+        until_constraints.append(
+            UntilConstraint(uc["type"], uc["until"], float(uc["p"]))
+        )
+
+    extra_constraints = region_constraints + until_constraints
+    return mdp_aug, p_goal_min, extra_constraints
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -134,8 +174,12 @@ def main():
 
     run_cfg = cfg.get("run", {})
     solver = run_cfg.get("solver", "both").lower()
-    if solver not in ("dp", "lp", "both", "pctl_lp"):
-        raise ValueError("Unknown run.solver. Use dp | lp | both | pctl_lp.")
+    solver = run_cfg.get("solver", "both").lower()
+    if solver not in ("dp", "lp", "both", "pctl_lp", "idual_trevizan"):
+        raise ValueError(
+            "Unknown run.solver. Use dp | lp | both | pctl_lp | idual_trevizan."
+        )
+
 
     lp_cfg = cfg.get("lp", {})
     lp_solver = lp_cfg.get("solver", "MOSEK")
@@ -225,9 +269,100 @@ def main():
             print("\nFinal policy (collapsed to base MDP):")
             print_policy_grid(mdp, base_policy)
     
+    if solver == "idual_trevizan":
+        pctl_cfg = cfg.get("pctl", {})
+        idual_cfg = cfg.get("idual", {})
 
-    if solver not in ("dp", "lp", "both", "pctl_lp"):
-        raise ValueError(f"Unknown run.solver={solver}. Use dp | lp | both | pctl_lp.")
+        mdp_aug, p_goal_min, extra_constraints = build_augmented_from_pctl_cfg(mdp, pctl_cfg)
+
+        # --- Base DP to build cost heuristic ---
+        V_base = value_iteration_shortest_path(mdp)
+
+        # cost-to-go heuristic defined on augmented states by physical component
+        H_cost = {st_aug: float(V_base.get(st_aug[0], 0.0)) for st_aug in mdp_aug.states_aug}
+
+        # --- Region / Until heuristics (computed on augmented MDP) ---
+        H_region_lower = {}
+        H_region_upper = {}
+        H_until_lower = {}
+        H_until_upper = {}
+
+        if idual_cfg.get("use_region_heuristic_lower", True):
+            # For visit_region_min constraints, a useful heuristic is max achievable visit prob
+            for f in pctl_cfg.get("flags", []):
+                name = f["name"]
+                H_region_lower[name] = compute_max_prob_visit_region_before_goal(mdp_aug, name)
+
+        if idual_cfg.get("use_region_heuristic_upper", False):
+            # For visit_region_max constraints, a useful heuristic is min achievable visit prob
+            for f in pctl_cfg.get("flags", []):
+                name = f["name"]
+                H_region_upper[name] = compute_min_prob_visit_region_before_goal(mdp_aug, name)
+
+        if idual_cfg.get("use_until_heuristic_lower", True):
+            for us in pctl_cfg.get("until_specs", []):
+                uname = us["name"]
+                H_until_lower[uname] = compute_max_prob_until_before_goal(mdp_aug, uname)
+
+        if idual_cfg.get("use_until_heuristic_upper", True):
+            for us in pctl_cfg.get("until_specs", []):
+                uname = us["name"]
+                H_until_upper[uname] = compute_min_prob_until_before_goal(mdp_aug, uname)
+
+        # Choose which cost heuristic to pass
+        H_to_pass = H_cost if idual_cfg.get("use_cost_heuristic", True) else None
+
+        (
+            x_final,
+            goal_prob_final,
+            region_flag_final,
+            until_final,
+            total_time,
+            final_lp_time,
+            n_iters,
+            envelope_size,
+            obj_final,
+        ) = i_dual_aug_trevizan(
+            mdp_aug,
+            p_goal_min=p_goal_min,
+            extra_constraints=extra_constraints,
+            H=H_to_pass,
+            H_region_upper=H_region_upper,
+            H_region_lower=H_region_lower,
+            H_until_upper=H_until_upper,
+            H_until_lower=H_until_lower,
+        )
+
+        if x_final is None:
+            print("\n[i-dual] No feasible policy under these constraints.")
+        else:
+            print("\n=== i-dual (Trevizan-style) with PCTL + Until ===")
+            print("P(reach GOAL):", float(goal_prob_final))
+            for name, val in region_flag_final.items():
+                print(f"[i-dual] P(ever visit {name}):", float(val))
+            for name, val in until_final.items():
+                print(f"[i-dual] P({name}):", float(val))
+
+            print("\n=== timing summary ===")
+            print("total i-dual time:", float(total_time))
+            print("final LP time:", float(final_lp_time))
+            print("iterations:", int(n_iters))
+            print("final envelope size:", int(envelope_size))
+            print("i-dual objective:", float(obj_final))
+
+            policy_aug = recover_policy_from_x_aug(mdp_aug, x_final)
+            base_traj, aug_traj = simulate_policy_aug(mdp_aug, policy_aug)
+            print("\nTrajectory under i-dual policy (base states):")
+            print(base_traj)
+
+            base_policy = collapse_augmented_policy_to_base(mdp_aug, policy_aug)
+            print("\nFinal policy (collapsed to base MDP):")
+            print_policy_grid(mdp, base_policy)
+
+
+    if solver not in ("dp", "lp", "both", "pctl_lp", "idual_trevizan"):
+        raise ValueError("Unknown run.solver. Use dp | lp | both | pctl_lp | idual_trevizan.")
+
 
 
 

@@ -1,0 +1,49 @@
+mdp:
+  world: "4x4_pctl"
+
+run:
+  solver: "idual_trevizan"     # dp | lp | both | pctl_lp | idual_trevizan
+
+lp:
+  solver: "MOSEK"             
+
+pctl:
+  p_goal_min: 1.0
+
+  flags:
+    - name: "G2"
+      region:
+        rect: [2, 0, 2, 1]
+    - name: "G3"
+      region:
+        rect: [1, 0, 1, 1]
+    - name: "G4"
+      region:
+        rect: [2, 1, 3, 3]
+
+  until_specs:
+    - name: "G2U_G3"
+      A: "G2"
+      B: "G3"
+
+  region_constraints: []
+  # - type: "visit_region_max"
+  #   region: "G4"
+  #   p: 0
+
+  # - type: "visit_region_min"
+  #   region: "G3"
+  #   p: 0.5
+
+  until_constraints: 
+    - type: "until_min"
+      until: "G2U_G3"
+      p: 0.7
+
+idual:
+  # Heuristic toggles (to run ablations from YAML)
+  use_cost_heuristic: true
+  use_region_heuristic_lower: false
+  use_region_heuristic_upper: false
+  use_until_heuristic_lower: true
+  use_until_heuristic_upper: false
