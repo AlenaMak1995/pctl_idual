@@ -400,6 +400,171 @@ Final policy (collapsed to base MDP):
 ```
 ## 6. I-Dual Programming with PCTL constraints
 
+Base
+```
+=== i-dual (Trevizan-style) with PCTL + Until ===
+P(reach GOAL): 1.0
+[i-dual] P(ever visit G2): 0.0
+[i-dual] P(ever visit G3): 0.0
+[i-dual] P(ever visit G4): 1.0
+[i-dual] P(G2U_G3): 0.0
+
+=== timing summary ===
+total i-dual time: 0.26384166488423944
+final LP time: 0.00021314620971679688
+iterations: 7
+final envelope size: 13
+i-dual objective: 10.0
+
+Trajectory under i-dual policy (base states):
+[(3, 0), (3, 1), (3, 2), (2, 2), (2, 3), (1, 3), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ ·   ·   ·   G  
+ ·   ·   ·   ↑  
+ ·   ·   →   ↑  
+ S   →   ↑   ·  
+```
+ ### Region avoidance (hard constraint)
+ 
+ `P(ever visit G4) ≤ 0`
+
+```
+=== i-dual (Trevizan-style) with PCTL + Until ===
+P(reach GOAL): 0.9999999965134042
+[i-dual] P(ever visit G2): 0.9999999965134042
+[i-dual] P(ever visit G3): 0.9999999965134042
+[i-dual] P(ever visit G4): 0.0
+[i-dual] P(G2U_G3): 0.9999999833016845
+
+=== timing summary ===
+total i-dual time: 5.75593291351106
+final LP time: 0.0013849735260009766
+iterations: 35
+final envelope size: 65
+i-dual objective: 15.000000039670944
+
+Trajectory under i-dual policy (base states):
+[(3, 0), (2, 0), (1, 0), (0, 0), (0, 1), (0, 2), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ →   →   →   G  
+ ↑   ·   ·   ·  
+ ↑   ·   ·   ·  
+ S   ·   ·   ·
+
+```
+
+### Until constraint
+
+ `P ≥ 0.7 [ G2 U G3 ]`
+```
+ === i-dual (Trevizan-style) with PCTL + Until ===
+P(reach GOAL): 1.0
+[i-dual] P(ever visit G2): 0.7
+[i-dual] P(ever visit G3): 0.7
+[i-dual] P(ever visit G4): 1.0
+[i-dual] P(G2U_G3): 0.7
+
+=== timing summary ===
+total i-dual time: 0.4242631259839982
+final LP time: 0.0004420280456542969
+iterations: 7
+final envelope size: 27
+i-dual objective: 11.399999999999999
+
+Trajectory under i-dual policy (base states):
+[(3, 0), (2, 0), (2, 1), (1, 1), (0, 1), (0, 2), (0, 3)]
+
+Final policy (collapsed to base MDP):
+ ·   →   →   G  
+ ·   ↑   ·   ↑  
+ →   ↑   →   ↑  
+ S   →   ↑   ·
+
+```
+
+### 20x20 grid, no objective heuristic used
+```
+=== timing summary ===
+total i-dual time: 875.4739737199998
+final LP time: 0.09777860400026839
+iterations: 133
+final envelope size: 1012
+Total augmented states: 6400
+Fraction explored:      0.1581
+[i-dual] P(ever visit G2): 0.9999999972195885
+[i-dual] P(ever visit G3): 0.6999999999442036
+[i-dual] P(G2U_G3): 0.6999999999442036
+P(reach GOAL): 0.9999999972195885
+i-dual objective: 62.7100000027103
+
+Trajectory under PCTL-constrained policy (base states): [(19, 0), (19, 1), (19, 2), (19, 3), (19, 4), (19, 5), (18, 5), (17, 5), (16, 5), (15, 5), (14, 5), (13, 5), (12, 5), (11, 5), (11, 4), (10, 4), (9, 4), (8, 4), (7, 4), (6, 4), (5, 4), (4, 4), (4, 5), (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11), (4, 12), (4, 13), (4, 14), (4, 15), (4, 16), (4, 17), (4, 18), (4, 19), (3, 19), (2, 19), (1, 19), (0, 19)]
+
+Final policy (collapsed to base MDP):
+ ·   ·   ·   ·   ·   ·   ·   ·   →   →   →   →   →   →   →   →   →   →   →   G  
+ ·   ·   ·   ·   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑  
+ ·   ·   ·   ·   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑  
+ ·   ·   ·   ·   ↑   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑  
+ ·   ·   ·   ·   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ←   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   →   →   →   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   →   →   ↑   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑   ↑   ↑   ↑  
+ S   →   →   →   →   ↑   →   →   →   →   →   →   →   →   →   →   ↑   →   ↑   ↑  
+
+ ```
+### 20x20 grid with objective heuristic
+```
+=== timing summary ===
+total i-dual time: 15.413634545002424
+final LP time: 0.006009345999700599
+iterations: 48
+final envelope size: 221
+Total augmented states: 6400
+Fraction explored:      0.0345
+[i-dual] P(ever visit G2): 0.9999999977976884
+[i-dual] P(ever visit G3): 0.6999999976895868
+[i-dual] P(G2U_G3): 0.6999999976895868
+P(reach GOAL): 0.9999999977976884
+i-dual objective: 62.71000001738774
+
+Trajectory under PCTL-constrained policy (base states): [(19, 0), (19, 1), (19, 2), (19, 3), (19, 4), (19, 5), (18, 5), (17, 5), (16, 5), (15, 5), (14, 5), (13, 5), (12, 5), (11, 5), (11, 4), (10, 4), (9, 4), (8, 4), (7, 4), (6, 4), (5, 4), (4, 4), (4, 5), (4, 6), (4, 7), (4, 8), (4, 9), (4, 10), (4, 11), (4, 12), (4, 13), (4, 14), (4, 15), (4, 16), (4, 17), (4, 18), (4, 19), (3, 19), (2, 19), (1, 19), (0, 19)]
+
+Final policy (collapsed to base MDP):
+ ·   ·   ·   ·   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   G  
+ ·   ·   ·   ·   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑  
+ ·   ·   ·   ·   ↑   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑   ↑  
+ ·   ·   ·   ·   ↑   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑   ↑  
+ ·   ·   ·   ·   →   →   →   →   →   →   →   →   →   →   →   →   →   →   →   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ↑   ←   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   →   ↑  
+ ·   ·   ·   ·   ·   ↑   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   ·   →   ↑   ·  
+ S   →   →   →   →   ↑   →   →   →   →   →   →   →   →   →   →   →   ↑   ·   ·  
+```
+
+## 7. I-Dual VS LP running time with PCTL constraints
 
 
 
