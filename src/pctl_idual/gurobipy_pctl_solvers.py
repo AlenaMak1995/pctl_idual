@@ -6,7 +6,7 @@ import time
 import gurobipy as gp
 from gurobipy import GRB
 
-from pctl_idual.gridworld import GridWorld, State, Action  # adjust relative import if needed
+from pctl_idual.gridworld import GridWorld, State, Action  
 
 AugState = Tuple  # (s, z1, z2, ...)
 Region = Set[State]
@@ -43,9 +43,9 @@ class UntilSpec:
     A_region = states where A holds
     B_region = states where B holds
 
-    Semantics: along a run, the formula succeeds if you hit B
-    while A has held at all previous steps; fails if you ever
-    leave A before hitting B.
+    Semantics: along a run, the formula succeeds if the agent hits B
+    while A has held at all previous steps; fails if agent ever
+    leaves A before hitting B.
     """
     name: str
     A_region: Region
@@ -114,7 +114,6 @@ class AugmentedMDP:
                 self.states_aug.append((s,) + tuple(z))
 
     def is_absorbing_aug(self, st: AugState) -> bool:
-        # you can tweak this if you want until-formulas to keep “running”
         return self.base.is_goal(st[0])
 
     def actions_from_aug(self, st: AugState) -> List[Action]:
@@ -237,8 +236,7 @@ def solve_lp_with_pctl_aug_gurobi(
         uspec.name: np.zeros(E, dtype=float) for uspec in (mdp_aug.until_specs or [])
     }
 
-    # IMPORTANT FIX:
-    # Region/until coeffs must be counted for *all* edges whose successor has the bit set,
+    # Region/until coeffs must be counted for all edges whose successor has the bit set,
     # not only those that go into GOAL.
     for e, (st, a) in enumerate(edges):
         st2 = mdp_aug.move_aug(st, a)
@@ -278,7 +276,7 @@ def solve_lp_with_pctl_aug_gurobi(
 
     m = gp.Model("shortest_path_lp", env=env) if env is not None else gp.Model("pctl_global_lp")
     m.Params.OutputFlag = 1 if verbose else 0
-    # Optional LP params that sometimes help:
+    # Optional LP params 
     # m.Params.Method = 2        # barrier
     # m.Params.Crossover = 0
     # m.Params.Presolve = 2
@@ -425,7 +423,7 @@ def simulate_policy_aug_gurobi(
     policy_aug,
     max_steps: int = 100):
     """
-    Simulate *deterministically* the augmented policy by always taking
+    Simulate deterministically the augmented policy by always taking
     the action with highest probability in policy_aug[st].
 
     Returns:
