@@ -4,12 +4,9 @@ mdp:
 run:
   solver: "pctl_lp"
 
-lp:
-  solver: "MOSEK"     # MOSEK | HIGHS | DEFAULT
-
 pctl:
   p_goal_min: 1.0
-  backend: "cvxpy"   #  "cvxpy"|"gurobi"
+  backend: "gurobi"   #  "cvxpy"|"gurobi"
 
 
   # Define named regions (flags)
