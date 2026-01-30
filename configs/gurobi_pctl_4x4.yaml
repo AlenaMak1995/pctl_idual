@@ -9,6 +9,7 @@ lp:
 
 pctl:
   p_goal_min: 1.0
+  backend: "gurobi"   # or "cvxpy"
 
   # Define named regions (flags)
   flags:

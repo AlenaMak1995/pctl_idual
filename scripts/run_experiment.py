@@ -44,6 +44,22 @@ from pctl_idual.idual_solvers import (
     compute_max_prob_until_before_goal,
     compute_min_prob_until_before_goal,
 )
+
+
+from pctl_idual.gurobipy_lp_solver import (
+    solve_shortest_path_lp_gurobi,
+    recover_policy_from_x_gurobi,
+    print_policy_grid_gurobi
+
+)
+
+from pctl_idual.gurobipy_pctl_solvers import (
+    solve_lp_with_pctl_aug_gurobi,
+    recover_policy_from_x_aug_gurobi,
+    print_policy_grid_z0_gurobi,
+    print_policy_for_flags_gurobi,
+    simulate_policy_aug_gurobi
+)
 def build_mdp(mdp_cfg):
     world = mdp_cfg["world"]
 
@@ -204,6 +220,10 @@ def main():
 
     if solver == "pctl_lp":
         pctl_cfg = cfg.get("pctl", {})
+        backend = pctl_cfg.get("backend", "cvxpy").lower()
+        if backend not in ("cvxpy", "gurobi"):
+            raise ValueError("pctl.backend must be cvxpy or gurobi")
+
         p_goal_min = float(pctl_cfg.get("p_goal_min", 1.0))
 
         # Build regions dict from flags
@@ -241,34 +261,52 @@ def main():
                 UntilConstraint(uc["type"], uc["until"], float(uc["p"]))
             )
 
-        J_pctl, p_goal, x_opt_aug, region_probs, until_probs, t_pctl = solve_lp_with_pctl_aug(
-            mdp_aug,
-            p_goal_min=p_goal_min,
-            region_constraints=region_constraints,
-            until_constraints=until_constraints,
-        )
+        # ---- solve ----
+        if backend == "cvxpy":
+            J_pctl, p_goal, x_opt_aug, region_probs, until_probs, t_pctl = solve_lp_with_pctl_aug(
+                mdp_aug,
+                p_goal_min=p_goal_min,
+                region_constraints=region_constraints,
+                until_constraints=until_constraints,
+            )
+            policy_recover = recover_policy_from_x_aug
+            policy_sim = simulate_policy_aug
+
+        else:  # backend == "gurobi"
+            J_pctl, p_goal, x_opt_aug, region_probs, until_probs, t_pctl = solve_lp_with_pctl_aug_gurobi(
+                mdp_aug,
+                p_goal_min=p_goal_min,
+                region_constraints=region_constraints,
+                until_constraints=until_constraints,
+                verbose=False,
+                env=None,  # or pass GRB_ENV
+            )
+            policy_recover = recover_policy_from_x_aug_gurobi
+            policy_sim = simulate_policy_aug_gurobi   # if you wrote this; otherwise use simulate_policy_aug
 
         if x_opt_aug is None:
             print("\n[Global PCTL+Until LP] No feasible policy.")
         else:
             print("\n=== Global LP with PCTL + Until ===")
+            print("backend:", backend)
             print("Optimal expected cost:", float(J_pctl))
             print("P(reach GOAL):", float(p_goal))
-            for name, val in region_probs.items():
+            for name, val in (region_probs or {}).items():
                 print(f"P(ever visit {name}):", float(val))
-            for name, val in until_probs.items():
+            for name, val in (until_probs or {}).items():
                 print(f"P({name}):", float(val))
             print("Solve time:", round(t_pctl, 3), "s")
 
-            policy_aug = recover_policy_from_x_aug(mdp_aug, x_opt_aug)
-            base_traj_pctl, aug_traj_pctl = simulate_policy_aug(mdp_aug, policy_aug)
+            policy_aug = policy_recover(mdp_aug, x_opt_aug)
+            base_traj_pctl, aug_traj_pctl = policy_sim(mdp_aug, policy_aug)
+
             print("\nTrajectory under PCTL-constrained policy (base states):")
             print(base_traj_pctl)
 
             base_policy = collapse_augmented_policy_to_base(mdp_aug, policy_aug)
             print("\nFinal policy (collapsed to base MDP):")
             print_policy_grid(mdp, base_policy)
-    
+
     if solver == "idual_trevizan":
         pctl_cfg = cfg.get("pctl", {})
         idual_cfg = cfg.get("idual", {})

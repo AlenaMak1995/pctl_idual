@@ -1,6 +1,7 @@
 mdp:
   world: "4x4_pctl"   
 
+
 run:
   solver: "pctl_lp"
 
@@ -9,6 +10,7 @@ lp:
 
 pctl:
   p_goal_min: 1.0
+  backend: "cvxpy"   # or "gurobi"
 
   # Define named regions (flags)
   flags:

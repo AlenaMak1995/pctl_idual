@@ -1,0 +1,42 @@
+mdp:
+  world: "20x20"   
+
+run:
+  solver: "pctl_lp"
+
+lp:
+  solver: "MOSEK"     # MOSEK | HIGHS | DEFAULT
+
+pctl:
+  p_goal_min: 1.0
+  backend: "cvxpy"   #  "cvxpy"|"gurobi"
+
+
+  # Define named regions (flags)
+  flags:
+    - name: "G2"
+      region:
+        union:
+          - rect: [19, 0, 19, 5]   # bottom horizontal segment
+          - rect: [11, 5, 18, 5]   # vertical segment
+
+    - name: "G3"
+      region:
+        rect: [11, 5, 11, 5]       # single cell
+
+  # --- Until specification ---
+  until_specs:
+    - name: "G2U_G3"
+      A: "G2"
+      B: "G3"
+
+  # --- Constraints ---
+  region_constraints: 
+    - type: "visit_region_min"
+      region: "G2"
+      p: 0.7
+
+  until_constraints: []
+    # - type: "until_min"
+    #   until: "G2U_G3"
+    #   p: 0.3
