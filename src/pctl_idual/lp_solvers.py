@@ -61,7 +61,7 @@ def solve_shortest_path_lp_no_pctl(mdp: GridWorld):
     x_opt = {(s, a): var.value for (s, a), var in x.items()}
     return obj.value, x_opt, solve_time
 
-def solve_shortest_path_lp(mdp: GridWorld, solver: str = "MOSEK"):
+def solve_shortest_path_lp(mdp: GridWorld, solver: str = "GUROBI"):
     """
     LP for shortest path using a vectorized formulation:
 
@@ -123,11 +123,16 @@ def solve_shortest_path_lp(mdp: GridWorld, solver: str = "MOSEK"):
 
     obj = cp.Minimize(costs @ x_vec)
     constraints = [A @ x_vec == b]
+    # one_coeff = np.ones(E)
+    # constraints.append(one_coeff @ x_vec <= 60.0)  # pick H
+
 
     prob = cp.Problem(obj, constraints)
 
     t0 = time.perf_counter()
-    if solver == "MOSEK":
+    if solver == "GUROBI":
+        prob.solve(solver=cp.GUROBI)
+    elif solver == "MOSEK":
         prob.solve(solver=cp.MOSEK)
     elif solver == "HIGHS":
         prob.solve(solver=cp.HIGHS)
@@ -141,7 +146,7 @@ def solve_shortest_path_lp(mdp: GridWorld, solver: str = "MOSEK"):
         return None, None, solve_time
 
     x_val = x_vec.value
-    # Rebuild dict x_opt[(s,a)] for compatibility 
+    # Rebuild dict x_opt[(s,a)] for compatibility with your other code
     x_opt: Dict[Tuple[State, Action], float] = {}
     for j, (s, a) in enumerate(sa_list):
         x_opt[(s, a)] = x_val[j]
@@ -161,51 +166,65 @@ def recover_policy_from_x(mdp: GridWorld, x_opt, tol=1e-8):
             policy[s] = {a: 0.0 for a in mdp.actions_from(s)}
     return policy
 
+def collapse_augmented_policy_to_base_weighted(mdp_aug, x_opt_aug, tol=1e-12):
+    """
+    Collapse augmented policy to base policy using occupancy weights.
 
-def print_policy_grid(mdp: GridWorld, policy, G2=None, G3=None):
+    We compute base-policy(s,a) proportional to sum_z x((s,z),a).
+    This is the most faithful collapse of an occupancy-measure solution.
+    """
+    base_policy = {s: {} for s in mdp_aug.base.states}
+    base_total  = {s: 0.0 for s in mdp_aug.base.states}
+
+    for (st_aug, a), x in x_opt_aug.items():
+        if x <= tol:
+            continue
+        s = st_aug[0]
+        base_policy[s][a] = base_policy[s].get(a, 0.0) + float(x)
+        base_total[s] += float(x)
+
+    # normalize per state
+    for s, tot in base_total.items():
+        if tot > tol:
+            for a in list(base_policy[s].keys()):
+                base_policy[s][a] /= tot
+        else:
+            # leave empty or uniform; I prefer empty so printer shows "·"
+            base_policy[s] = {}
+
+    return base_policy
+
+
+def print_base_policy_grid(mdp, base_policy, show_probs=False):
     arrow = {"U": "↑", "D": "↓", "L": "←", "R": "→"}
+
     for r in range(mdp.N):
         row = ""
         for c in range(mdp.N):
             s = (r, c)
             if s == mdp.start:
                 row += " S  "
-            elif s in mdp.goal:
+                continue
+            if s in mdp.goal:
                 row += " G  "
-            # elif G2 is not None and s in G2:
-            #     row += " 2  "
-            # elif G3 is not None and s in G3:
-            #     row += " 3  "    
-            elif s not in policy or not policy[s]:
+                continue
+
+            ap = base_policy.get(s, {})
+            if not ap:
+                row += " ·  "
+                continue
+
+            best_a = max(ap, key=lambda a: ap[a])
+            if ap[best_a] < 1e-9:
                 row += " ·  "
             else:
-                best_a = max(policy[s], key=lambda a: policy[s][a])
-                if policy[s][best_a] < 1e-6:
-                    row += " ·  "
-                else:
-                    row += f" {arrow[best_a]}  "
+                row += f" {arrow[best_a]}  "
         print(row)
-        
-def collapse_augmented_policy_to_base(mdp_aug, policy_aug):
-    """
-    For each base state s, combine action probabilities
-    across *all* flag valuations into one base policy.
-    (simple average over reachable augmented states)
-    """
-    base_policy = {s: {} for s in mdp_aug.base.states}
 
-    for st_aug, act_probs in policy_aug.items():
-        s = st_aug[0]  # physical state
-        for a, p in act_probs.items():
-            base_policy[s][a] = base_policy[s].get(a, 0.0) + p
-
-    # normalize each state's probs
-    for s, ap in base_policy.items():
-        total = sum(ap.values())
-        if total > 0:
-            for a in ap:
-                ap[a] /= total
-
-    return base_policy
-               
+    if show_probs:
+        print("\n[base policy probs]")
+        for s, ap in base_policy.items():
+            if ap:
+                best_a = max(ap, key=lambda a: ap[a])
+                print(s, "->", best_a, {a: round(p, 3) for a, p in ap.items()})
 

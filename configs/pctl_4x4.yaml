@@ -1,16 +1,17 @@
 mdp:
-  world: "4x4_pctl"   
-
+  world: "custom"   
+  N: 10
+  start: [9, 0]
+  goal: [[0, 9]]
+  slip_prob: 0.1
 
 run:
   solver: "pctl_lp"
 
-lp:
-  solver: "MOSEK"     # MOSEK | HIGHS | DEFAULT
 
 pctl:
   p_goal_min: 1.0
-  backend: "cvxpy"   # or "gurobi"
+  backend: "gurobi"   #  cvxpy | gurobi
 
   # Define named regions (flags)
   flags:
@@ -34,7 +35,7 @@ pctl:
   region_constraints: 
   - type: "visit_region_max"
     region: "G4"
-    p: 0.0
+    p: 1e-3
 
 
   # Until constraints
@@ -42,4 +43,4 @@ pctl:
 
   - type: "until_min"
     until: "G2U_G3"
-    p: 0.7
+    p: 0.5

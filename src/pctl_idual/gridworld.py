@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from typing import Callable, Dict, Tuple, Set, List
 
+
 Action = str
 State = Tuple[int, int]
 Region = Set[State]
@@ -9,31 +10,37 @@ Region = Set[State]
 ACTIONS: List[Action] = ["U", "D", "L", "R"]
 DELTA = {"U": (-1, 0), "D": (1, 0), "L": (0, -1), "R": (0, 1)}
 
+SIDEWAYS = {
+    "U": ["L", "R"],
+    "D": ["L", "R"],
+    "L": ["U", "D"],
+    "R": ["U", "D"],
+}
+
 
 @dataclass
 class GridWorld:
     """
     Base Grid MDP.
 
-    The possible changes:
-    - N (grid size)
-    - define an arbitrary goal region
+    You can:
+    - change N (grid size)
+    - define arbitrary goal region
     - define arbitrary cost structure via cost_cell
-    - define transition probabilities via slip_prob 
+    - define transition probabilities via slip_prob (or later a custom rule)
     """
     N: int
     start: State
     goal: Region
     cost_cell: Callable[[int, int], float]
-    # probability of "slipping" to a random other action
-    slip_prob: float = 0.0   
+    slip_prob: float = 0.0   # probability of "slipping" to a random other action
 
     def __post_init__(self):
         self.states: List[State] = [
             (r, c) for r in range(self.N) for c in range(self.N)
         ]
 
-    # --- geometry helpers with grid borders ---
+    # --- geometry helpers ---
 
     def clamp(self, r: int, c: int) -> State:
         return max(0, min(self.N - 1, r)), max(0, min(self.N - 1, c))
@@ -55,41 +62,51 @@ class GridWorld:
         return ACTIONS
 
     def transitions(self, s: State, a: Action) -> Dict[State, float]:
-        """
-        P(s' | s, a): transition probabilities.
 
-        - with prob 1 - slip_prob: go in direction a
-        - with prob slip_prob: choose uniformly among other actions
-        """
-        if self.is_goal(s):
-            return {s: 1.0}
+      if self.is_goal(s):
+        return {s: 1.0}
 
-        next_main = self.move(s, a)
+      next_main = self.move(s, a)
 
-        if self.slip_prob <= 0:
-            return {next_main: 1.0}
+      # no slip
+      if self.slip_prob <= 0:
+        return {next_main: 1.0}
 
-        others = [b for b in ACTIONS if b != a]
-        p_main = 1.0 - self.slip_prob
-        p_slip_each = self.slip_prob / len(others)
+      sideways = {
+        "U": ["L", "R"],
+        "D": ["L", "R"],
+        "L": ["U", "D"],
+        "R": ["U", "D"],
+      }[a]
 
-        probs: Dict[State, float] = {}
-        # main move
-        probs[next_main] = probs.get(next_main, 0.0) + p_main
-        # slips
-        for b in others:
-            s2 = self.move(s, b)
-            probs[s2] = probs.get(s2, 0.0) + p_slip_each
-        return probs
+      p_main = 1.0 - self.slip_prob
+      p_side = self.slip_prob / 2.0
+
+      probs: Dict[State, float] = {}
+
+      # intended move
+      probs[next_main] = probs.get(next_main, 0.0) + p_main
+
+      # sideways slips
+      for b in sideways:
+        s2 = self.move(s, b)
+        probs[s2] = probs.get(s2, 0.0) + p_side
+
+      return probs
+
 
     def cost(self, s: State, a: Action) -> float:
-        """
-        Immediate cost for taking a in state s.
-        Current setup: cost of the next cell.
-        """
-        s2 = self.move(s, a)
+      """
+      Expected immediate cost for taking action a in state s.
+      Cost is the expected cost of the next cell under P(s'|s,a).
+      """
+      probs = self.transitions(s, a)
+      exp = 0.0
+      for s2, p in probs.items():
         r2, c2 = s2
-        return self.cost_cell(r2, c2)
+        exp += p * self.cost_cell(r2, c2)
+      return exp
+
 
 
 # =========================

@@ -1,5 +1,6 @@
 import argparse
 import yaml
+import math
 
 from pctl_idual.gridworld import (
     make_grid_world,
@@ -18,8 +19,8 @@ from pctl_idual.dp_solvers import (
 from pctl_idual.lp_solvers import (
     solve_shortest_path_lp,
     recover_policy_from_x,
-    print_policy_grid,
-    collapse_augmented_policy_to_base
+    print_base_policy_grid,
+    collapse_augmented_policy_to_base_weighted
 )
 
 from pctl_idual.pctl_solvers import (
@@ -27,12 +28,21 @@ from pctl_idual.pctl_solvers import (
     PCTLRegionConstraint,
     UntilSpec,
     UntilConstraint,
-    AugmentedMDP,
-    solve_lp_with_pctl_aug,
+    AugmentedMDPBaseline,
+    solve_lp_with_pctl_aug_baseline,
     recover_policy_from_x_aug,
     print_policy_grid_z0,
-    print_policy_for_flags,
+    # print_policy_for_flags,
     simulate_policy_aug
+)
+
+from pctl_idual.gurobipy_pctl_solvers import (
+    AugmentedMDP,
+    solve_lp_with_pctl_aug_gurobi,
+    recover_policy_from_x_aug_gurobi,
+    print_policy_grid_z0_gurobi,
+    print_policy_for_flags_gurobi,
+    simulate_policy_aug_gurobi_stochastic
 )
 
 from pctl_idual.idual_solvers import (
@@ -53,13 +63,16 @@ from pctl_idual.gurobipy_lp_solver import (
 
 )
 
-from pctl_idual.gurobipy_pctl_solvers import (
-    solve_lp_with_pctl_aug_gurobi,
-    recover_policy_from_x_aug_gurobi,
-    print_policy_grid_z0_gurobi,
-    print_policy_for_flags_gurobi,
-    simulate_policy_aug_gurobi
-)
+
+def is_infinite_or_nan(x):
+    if x is None:
+        return True
+    try:
+        return not math.isfinite(float(x))
+    except Exception:
+        return True
+
+
 def build_mdp(mdp_cfg):
     world = mdp_cfg["world"]
 
@@ -159,7 +172,8 @@ def build_augmented_from_pctl_cfg(mdp, pctl_cfg):
             )
         )
 
-    mdp_aug = AugmentedMDP(mdp, flags=flags, until_specs=until_specs)
+    mdp_aug_cvx = AugmentedMDPBaseline(mdp, flags=flags, until_specs=until_specs)
+    mdp_aug_grb = AugmentedMDP(mdp, flags=flags, until_specs=until_specs)
 
     # Region constraints
     region_constraints = []
@@ -176,7 +190,7 @@ def build_augmented_from_pctl_cfg(mdp, pctl_cfg):
         )
 
     extra_constraints = region_constraints + until_constraints
-    return mdp_aug, p_goal_min, extra_constraints
+    return mdp_aug_cvx, mdp_aug_grb, p_goal_min, region_constraints, until_constraints, extra_constraints
 
 
 def main():
@@ -216,7 +230,7 @@ def main():
 
         pi_lp = recover_policy_from_x(mdp, x_opt)
         print("\nPolicy from LP:")
-        print_policy_grid(mdp, pi_lp)
+        # print_policy_grid(mdp, pi_lp)
 
     if solver == "pctl_lp":
         pctl_cfg = cfg.get("pctl", {})
@@ -224,69 +238,23 @@ def main():
         if backend not in ("cvxpy", "gurobi"):
             raise ValueError("pctl.backend must be cvxpy or gurobi")
 
-        p_goal_min = float(pctl_cfg.get("p_goal_min", 1.0))
+        mdp_aug_cvx, mdp_aug_grb, p_goal_min, region_constraints, until_constraints, _ = \
+            build_augmented_from_pctl_cfg(mdp, pctl_cfg)
 
-        # Build regions dict from flags
-        regions = {}
-        for f in pctl_cfg.get("flags", []):
-            name = f["name"]
-            regions[name] = parse_region(f["region"], mdp.N)
-
-        flags = [RegionFlagSpec(name, regions[name]) for name in regions]
-
-        # Until specs
-        until_specs = []
-        for us in pctl_cfg.get("until_specs", []):
-            until_specs.append(
-                UntilSpec(
-                    us["name"],
-                    A_region=regions[us["A"]],
-                    B_region=regions[us["B"]],
-                )
-            )
-
-        mdp_aug = AugmentedMDP(mdp, flags=flags, until_specs=until_specs)
-
-        # Region constraints
-        region_constraints = []
-        for rc in pctl_cfg.get("region_constraints", []):
-            region_constraints.append(
-                PCTLRegionConstraint(rc["type"], rc["region"], float(rc["p"]))
-            )
-
-        # Until constraints
-        until_constraints = []
-        for uc in pctl_cfg.get("until_constraints", []):
-            until_constraints.append(
-                UntilConstraint(uc["type"], uc["until"], float(uc["p"]))
-            )
-
-        # ---- solve ----
         if backend == "cvxpy":
-            J_pctl, p_goal, x_opt_aug, region_probs, until_probs, t_pctl = solve_lp_with_pctl_aug(
-                mdp_aug,
-                p_goal_min=p_goal_min,
-                region_constraints=region_constraints,
-                until_constraints=until_constraints,
-            )
-            policy_recover = recover_policy_from_x_aug
-            policy_sim = simulate_policy_aug
+            J_pctl, p_goal, x_opt_aug, region_probs, until_probs, t_pctl = \
+                solve_lp_with_pctl_aug_baseline(
+                    mdp_aug_cvx,
+                    p_goal_min=p_goal_min,
+                    region_constraints=region_constraints,
+                    until_constraints=until_constraints,
+                )
 
-        else:  # backend == "gurobi"
-            J_pctl, p_goal, x_opt_aug, region_probs, until_probs, t_pctl = solve_lp_with_pctl_aug_gurobi(
-                mdp_aug,
-                p_goal_min=p_goal_min,
-                region_constraints=region_constraints,
-                until_constraints=until_constraints,
-                verbose=False,
-                env=None,  # or pass GRB_ENV
-            )
-            policy_recover = recover_policy_from_x_aug_gurobi
-            policy_sim = simulate_policy_aug_gurobi   # if you wrote this; otherwise use simulate_policy_aug
+            # check FIRST
+            if (x_opt_aug is None) or is_infinite_or_nan(J_pctl) or is_infinite_or_nan(p_goal) or (len(x_opt_aug) == 0):
+                print("\n[Global PCTL+Until LP] Infeasible or no valid policy found.")
+                return
 
-        if x_opt_aug is None:
-            print("\n[Global PCTL+Until LP] No feasible policy.")
-        else:
             print("\n=== Global LP with PCTL + Until ===")
             print("backend:", backend)
             print("Optimal expected cost:", float(J_pctl))
@@ -297,15 +265,53 @@ def main():
                 print(f"P({name}):", float(val))
             print("Solve time:", round(t_pctl, 3), "s")
 
-            policy_aug = policy_recover(mdp_aug, x_opt_aug)
-            base_traj_pctl, aug_traj_pctl = policy_sim(mdp_aug, policy_aug)
+            policy_aug = recover_policy_from_x_aug(mdp_aug_cvx, x_opt_aug)
+            base_traj, aug_traj = simulate_policy_aug(mdp_aug_cvx, policy_aug)
+            print("Trajectory example:", base_traj)
 
-            print("\nTrajectory under PCTL-constrained policy (base states):")
-            print(base_traj_pctl)
+            print("\nPolicy on z=0:")
+            print_policy_grid_z0(mdp_aug_cvx, policy_aug)
 
-            base_policy = collapse_augmented_policy_to_base(mdp_aug, policy_aug)
-            print("\nFinal policy (collapsed to base MDP):")
-            print_policy_grid(mdp, base_policy)
+            base_policy = collapse_augmented_policy_to_base_weighted(mdp_aug_cvx, x_opt_aug)
+            print("\nFinal policy (collapsed, weighted):")
+            print_base_policy_grid(mdp, base_policy)
+
+        else:
+            J_pctl, p_goal, x_opt_aug, region_probs, until_probs, t_pctl, grb_time = \
+                solve_lp_with_pctl_aug_gurobi(
+                    mdp_aug_grb,
+                    p_goal_min=p_goal_min,
+                    region_constraints=region_constraints,
+                    until_constraints=until_constraints,
+                    verbose=False,
+                    env=None,
+                )
+
+            if (x_opt_aug is None) or is_infinite_or_nan(J_pctl) or is_infinite_or_nan(p_goal) or (len(x_opt_aug) == 0):
+                print("\n[Global PCTL+Until LP] Infeasible or no valid policy found.")
+                return
+
+            print("\n=== Global LP with PCTL + Until ===")
+            print("backend:", backend)
+            print("Optimal expected cost:", float(J_pctl))
+            print("P(reach GOAL):", float(p_goal))
+            for name, val in (region_probs or {}).items():
+                print(f"P(ever visit {name}):", float(val))
+            for name, val in (until_probs or {}).items():
+                print(f"P({name}):", float(val))
+            print("Solve time:", round(t_pctl, 3), "s")
+
+            policy_aug = recover_policy_from_x_aug_gurobi(mdp_aug_grb, x_opt_aug)
+            base_traj, aug_traj = simulate_policy_aug_gurobi_stochastic(mdp_aug_grb, policy_aug)
+            print("Trajectory example:", base_traj)
+
+            print("\nPolicy on z=0:")
+            print_policy_grid_z0_gurobi(mdp_aug_grb, policy_aug)
+
+            base_policy = collapse_augmented_policy_to_base_weighted(mdp_aug_grb, x_opt_aug)
+            print("\nFinal policy (collapsed, weighted):")
+            print_base_policy_grid(mdp, base_policy)
+
 
     if solver == "idual_trevizan":
         pctl_cfg = cfg.get("pctl", {})

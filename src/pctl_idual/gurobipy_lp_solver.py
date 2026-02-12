@@ -38,6 +38,7 @@ def solve_shortest_path_lp_gurobi(mdp: GridWorld, verbose: bool = False,env=None
     n_states = len(mdp.states)
 
     # 3) Build sparse A and b for flow constraints: out(s) - in(s) = b_s
+    #    (same logic as your CVXPy version)
     A = sp.lil_matrix((n_states, n_vars), dtype=float)
     b = np.zeros(n_states, dtype=float)
 
@@ -66,11 +67,13 @@ def solve_shortest_path_lp_gurobi(mdp: GridWorld, verbose: bool = False,env=None
 
     m = gp.Model("shortest_path_lp", env=env) if env is not None else gp.Model("shortest_path_lp")
     m.Params.OutputFlag = 1 if verbose else 0
-
-    # Optional knobs 
+    # Speed-focused LP settings (good starting point for big sparse LPs)
+    m.Params.Method    = 2   # barrier
+    m.Params.Crossover = 0   # skip crossover to basic solution (often faster if you just need x)
+    m.Params.Presolve  = 2   # aggressive presolve
     # m.Params.Presolve = 2
     # m.Params.Method = 2       # 2=barrier, 1=dual simplex, 0=primal simplex, -1=auto
-    # m.Params.Crossover = 0    
+    # m.Params.Crossover = 0    # often OK for LP if you only need objective / primal
     # m.Params.NumericFocus = 1
 
     x = m.addMVar(shape=n_vars, lb=0.0, name="x")
@@ -99,7 +102,7 @@ def solve_shortest_path_lp_gurobi(mdp: GridWorld, verbose: bool = False,env=None
 
     x_val = x.X  # numpy array length n_vars
 
-    # Build dict x_opt[(s,a)] for compatibility with the code
+    # Build dict x_opt[(s,a)] for compatibility with your code
     x_opt: Dict[Tuple[State, Action], float] = {
         (s, a): float(x_val[j]) for j, (s, a) in enumerate(sa_list)
     }

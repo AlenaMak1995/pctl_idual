@@ -43,9 +43,9 @@ class UntilSpec:
     A_region = states where A holds
     B_region = states where B holds
 
-    Semantics: along a run, the formula succeeds if the agent hits B
-    while A has held at all previous steps; fails if agent ever
-    leaves A before hitting B.
+    Semantics: along a run, the formula succeeds if you hit B
+    while A has held at all previous steps; fails if you ever
+    leave A before hitting B.
     """
     name: str
     A_region: Region
@@ -91,15 +91,18 @@ class AugmentedMDP:
         self.flag_indices = {f.name: idx for idx, f in enumerate(self.flags)}
 
         # indices for until success/fail bits
+        self.until_armed_idx: Dict[str, int] = {}
         self.until_success_idx: Dict[str, int] = {}
         self.until_fail_idx: Dict[str, int] = {}
 
         offset = len(self.flags)
         for i, uspec in enumerate(self.until_specs):
-            self.until_success_idx[uspec.name] = offset + 2 * i
-            self.until_fail_idx[uspec.name] = offset + 2 * i + 1
+          base = offset + 3 * i
+          self.until_armed_idx[uspec.name]   = base + 0
+          self.until_success_idx[uspec.name] = base + 1
+          self.until_fail_idx[uspec.name]    = base + 2
 
-        total_bits = len(self.flags) + 2 * len(self.until_specs)
+        total_bits = len(self.flags) + 3 * len(self.until_specs)
         self.states_aug: List[AugState] = []
 
         # all 0/1 combinations for all bits
@@ -114,6 +117,7 @@ class AugmentedMDP:
                 self.states_aug.append((s,) + tuple(z))
 
     def is_absorbing_aug(self, st: AugState) -> bool:
+        # you can tweak this if you want until-formulas to keep “running”
         return self.base.is_goal(st[0])
 
     def actions_from_aug(self, st: AugState) -> List[Action]:
@@ -122,40 +126,98 @@ class AugmentedMDP:
         return self.base.actions_from(st[0])
 
     def move_aug(self, st: AugState, a: Action) -> AugState:
-        s = st[0]
-        bits = list(st[1:])
-        s2 = self.base.move(s, a)
+          """
+          Deterministic next-state (kept for debugging).
 
-        # --- simple "visited region" flags ---
-        for i, spec in enumerate(self.flags):
-            if s2 in spec.region:
-                bits[i] = 1
+          IMPORTANT: the LP must use transitions_aug() below,
+          otherwise you IGNORE slip/stochasticity.
+          """
+          s = st[0]
+          bits = list(st[1:])
+          s2 = self.base.move(s, a)  # deterministic intended move
+          bits2 = self._update_bits_from_next_state(bits, s2)
+          # If we reached the base goal and this until never succeeded, mark failure
+          if self.base.is_goal(s2):
+              for uspec in self.until_specs:
+                  i_succ = self.until_success_idx[uspec.name]
+                  i_fail = self.until_fail_idx[uspec.name]
+                  if bits2[i_succ] == 0:
+                      bits2[i_fail] = 1
+          return (s2, *bits2)
+    def _update_bits_from_next_state(self, bits: List[int], s2: State) -> List[int]:
+      # --- region flags ---
+      for i, spec in enumerate(self.flags):
+        if s2 in spec.region:
+            bits[i] = 1
 
-        # --- A U B formula bits ---
-        for uspec in self.until_specs:
-            i_succ = self.until_success_idx[uspec.name]
-            i_fail = self.until_fail_idx[uspec.name]
+      # --- until bits (armed/success/fail) ---
+      for uspec in self.until_specs:
+        i_arm  = self.until_armed_idx[uspec.name]
+        i_succ = self.until_success_idx[uspec.name]
+        i_fail = self.until_fail_idx[uspec.name]
 
-            # already decided for this formula?
-            if bits[i_succ] == 1 or bits[i_fail] == 1:
-                continue
+        # if already decided, don't change anything
+        if bits[i_succ] == 1 or bits[i_fail] == 1:
+            continue
 
+        # If not armed yet: arm once you are in A (depending on your CVXPY rule)
+        # Common choice: arm when you first enter A.
+        if bits[i_arm] == 0:
+            if s2 in uspec.A_region:
+                bits[i_arm] = 1
+            # if not armed and not in A, usually do nothing (not "failed" yet)
             if s2 in uspec.B_region:
-                # hit B while still "good so far" → success
-                bits[i_succ] = 1
-            elif s2 not in uspec.A_region:
-                # left A before hitting B → fail
                 bits[i_fail] = 1
-            # else: still in A, not in B → ongoing
+            continue    
+        # armed: enforce staying in A until hitting B
+        if s2 in uspec.B_region:
+            bits[i_succ] = 1
+            bits[i_fail] = 0
+        elif s2 not in uspec.A_region:
+            bits[i_fail] = 1
+            bits[i_succ] = 0    
 
-        return (s2, *bits)
+      return bits
+    
+    def transitions_aug(self, st: AugState, a: Action) -> Dict[AugState, float]:
+          """
+          Stochastic augmented transition kernel.
+
+          Uses base.transitions(s,a) (this includes slip!) and updates bits per successor.
+            Returns a dict {aug_state: prob}.
+          """
+          s = st[0]
+          bits0 = list(st[1:])
+          dist: Dict[AugState, float] = {}
+
+          base_dist = self.base.transitions(s, a)  # {s2: p}
+          for s2, p in base_dist.items():
+              bits2 = self._update_bits_from_next_state(bits0.copy(), s2)
+
+              if self.base.is_goal(s2):
+                  for uspec in self.until_specs:
+                      i_succ = self.until_success_idx[uspec.name]
+                      i_fail = self.until_fail_idx[uspec.name]
+                      if bits2[i_succ] == 0:
+                          bits2[i_fail] = 1
+
+              st2 = (s2, *bits2)
+              dist[st2] = dist.get(st2, 0.0) + float(p)  
+
+          # optional numeric safety
+          total = sum(dist.values())
+          if total > 0 and abs(total - 1.0) > 1e-12:
+            for k in list(dist.keys()):
+                dist[k] /= total
+
+          return dist    
 
     def cost_aug(self, st: AugState, a: Action) -> float:
         return self.base.cost(st[0], a)
 
     @property
     def start_aug(self) -> AugState:
-        total_bits = len(self.flags) + 2 * len(self.until_specs)
+        total_bits = len(self.flags) + 3 * len(self.until_specs)
         if total_bits == 0:
             return (self.base.start,)
         return (self.base.start,) + tuple(0 for _ in range(total_bits))
@@ -211,58 +273,58 @@ def solve_lp_with_pctl_aug_gurobi(
     if start_idx is not None:
         b[start_idx] = 1.0
 
-    # Precompute successor index (or None if absorbing / not in non_abs set)
-    succ_idx = [None] * E
-
     for e, (st, a) in enumerate(edges):
         i_from = state_index[st]
         out_edges[i_from].append(e)
 
-        st2 = mdp_aug.move_aug(st, a)
-        if (not mdp_aug.is_absorbing_aug(st2)) and (st2 in state_index):
+        for st2, p in mdp_aug.transitions_aug(st, a).items():
+          if (not mdp_aug.is_absorbing_aug(st2)) and (st2 in state_index):
             i_to = state_index[st2]
-            in_edges[i_to].append(e)
-            succ_idx[e] = i_to
+            in_edges[i_to].append((e, float(p)))
 
     # -------------------------------------------------------
     # 2) Build coefficient vectors for probabilities
     # -------------------------------------------------------
     goal_coeff = np.zeros(E, dtype=float)
 
-    region_coeffs: Dict[str, np.ndarray] = {
-        spec.name: np.zeros(E, dtype=float) for spec in mdp_aug.flags
-    }
-    until_coeffs: Dict[str, np.ndarray] = {
-        uspec.name: np.zeros(E, dtype=float) for uspec in (mdp_aug.until_specs or [])
-    }
+    region_coeffs = {spec.name: np.zeros(E, float) for spec in mdp_aug.flags}
+    until_coeffs  = {uspec.name: np.zeros(E, float) for uspec in (mdp_aug.until_specs or [])}
 
-    # Region/until coeffs must be counted for all edges whose successor has the bit set,
+    # Region/until coeffs must be counted for *all* edges whose successor has the bit set,
     # not only those that go into GOAL.
     for e, (st, a) in enumerate(edges):
-        st2 = mdp_aug.move_aug(st, a)
-        s2 = st2[0]
-        bits2 = st2[1:]  # may be empty
+        bits = st[1:]  # predecessor bits
 
-        # P(reach GOAL): count flow that enters a goal base-state
-        if s2 in mdp_aug.base.goal:
-            goal_coeff[e] = 1.0
-
-        # Region flags: "ever visited region"
-        if s2 in mdp_aug.base.goal:
-          for spec in mdp_aug.flags:
-            idx = mdp_aug.flag_indices[spec.name]
-            if idx < len(bits2) and bits2[idx] == 1:
-              region_coeffs[spec.name][e] = 1.0
-
-        # Until success: success=1 and fail=0
-        for uspec in (mdp_aug.until_specs or []):
-          i_succ = mdp_aug.until_success_idx[uspec.name]
-          i_fail = mdp_aug.until_fail_idx[uspec.name]
+        for st2, p in mdp_aug.transitions_aug(st, a).items():
+          p = float(p)
+          s2 = st2[0]
+          bits2 = st2[1:]
 
           if s2 in mdp_aug.base.goal:
-            if i_succ < len(bits2) and i_fail < len(bits2):
-              if bits2[i_succ] == 1 and bits2[i_fail] == 0:
-                until_coeffs[uspec.name][e] = 1.0
+            goal_coeff[e] += p
+
+          for spec in mdp_aug.flags:
+            idx = mdp_aug.flag_indices[spec.name]
+            if bits[idx] == 0 and bits2[idx] == 1:
+                region_coeffs[spec.name][e] += p
+
+          # Until success: success=1 and fail=0
+          for uspec in (mdp_aug.until_specs or []):
+            i_succ = mdp_aug.until_success_idx[uspec.name]
+            i_fail = mdp_aug.until_fail_idx[uspec.name]
+
+            if (bits[i_succ] == 0 and bits[i_fail] == 0
+                    and bits2[i_succ] == 1 and bits2[i_fail] == 0):
+                until_coeffs[uspec.name][e] += p
+    name = "G2U_G3"
+    if name in until_coeffs:
+      print("\n[GUROBI DEBUG]")
+      print("until_coeff nnz:", int(np.count_nonzero(until_coeffs[name])))
+      print("until_coeff sum :", float(until_coeffs[name].sum()))
+      print("until_coeff max :", float(until_coeffs[name].max()))
+    else:
+      print("\n[GUROBI DEBUG] missing key", name, "keys=", list(until_coeffs.keys()))
+    
 
     # -------------------------------------------------------
     # 3) Objective cost vector
@@ -276,10 +338,10 @@ def solve_lp_with_pctl_aug_gurobi(
 
     m = gp.Model("shortest_path_lp", env=env) if env is not None else gp.Model("pctl_global_lp")
     m.Params.OutputFlag = 1 if verbose else 0
-    # Optional LP params 
-    # m.Params.Method = 2        # barrier
-    # m.Params.Crossover = 0
-    # m.Params.Presolve = 2
+    # Optional LP params that sometimes help:
+    m.Params.Method = 2        # barrier
+    m.Params.Crossover = 0
+    m.Params.Presolve = 2
 
     x = m.addMVar(shape=E, lb=0.0, name="x")
     m.setObjective(cost_vec @ x, GRB.MINIMIZE)
@@ -293,7 +355,7 @@ def solve_lp_with_pctl_aug_gurobi(
             expr += x[out_edges[i]].sum()
         # in
         if in_edges[i]:
-            expr -= x[in_edges[i]].sum()
+            expr -= gp.quicksum(p * x[e] for (e, p) in in_edges[i])
         m.addConstr(expr == float(b[i]), name=f"flow[{i}]")
 
     # Goal constraint
@@ -320,6 +382,7 @@ def solve_lp_with_pctl_aug_gurobi(
             raise ValueError(f"Unknown until constraint kind {c.kind}")
 
     m.optimize()
+    grb_runtime = float(m.Runtime)
 
     t1 = time.perf_counter()
     solve_time = t1 - t0
@@ -339,7 +402,7 @@ def solve_lp_with_pctl_aug_gurobi(
     region_vals = {name: float(coeff @ x_val) for name, coeff in region_coeffs.items()}
     until_vals  = {name: float(coeff @ x_val) for name, coeff in until_coeffs.items()}
 
-    return float(m.ObjVal), p_goal, x_opt, region_vals, until_vals, solve_time
+    return float(m.ObjVal), p_goal, x_opt, region_vals, until_vals, solve_time, grb_runtime
 
 
 def recover_policy_from_x_aug_gurobi(mdp_aug: AugmentedMDP, x_opt, tol=1e-8):
@@ -366,7 +429,7 @@ def print_policy_grid_z0_gurobi(mdp_aug: AugmentedMDP, policy_aug):
     as a grid over the physical states.
     """
     arrow = {"U": "↑", "D": "↓", "L": "←", "R": "→"}
-    total_bits = len(mdp_aug.flags) + 2 * len(mdp_aug.until_specs)
+    total_bits = len(mdp_aug.flags) + 3 * len(mdp_aug.until_specs)
 
     for r in range(mdp_aug.base.N):
         row = ""
@@ -418,43 +481,35 @@ def print_policy_for_flags_gurobi(mdp_aug: AugmentedMDP, policy_aug, flag_tuple)
                     row += f" {arrow[best_a]}  "
         print(row)
 
-def simulate_policy_aug_gurobi(
-    mdp_aug: AugmentedMDP,
-    policy_aug,
-    max_steps: int = 100):
-    """
-    Simulate deterministically the augmented policy by always taking
-    the action with highest probability in policy_aug[st].
+import random
 
-    Returns:
-      base_traj: list of physical states s_t
-      aug_traj:  list of augmented states (s_t, bits_t)
-    """
+def simulate_policy_aug_gurobi_stochastic(mdp_aug, policy_aug, max_steps=200):
     st = mdp_aug.start_aug
-    s = st[0]
-    base_traj = [s]
-    aug_traj = [st]
+    base_traj = [st[0]]
+    aug_traj  = [st]
 
     for _ in range(max_steps):
         if mdp_aug.is_absorbing_aug(st):
             break
-
-        if st not in policy_aug:
-            # no policy defined → stop
-            break
-        probs = policy_aug[st]
-        if not probs:
+        if st not in policy_aug or not policy_aug[st]:
             break
 
-        # greedy action wrt probabilities
-        a = max(probs, key=probs.get)
+        # sample action from policy
+        ap = policy_aug[st]
+        actions = list(ap.keys())
+        probs   = list(ap.values())
+        sprob = sum(probs)
+        probs = [p/sprob for p in probs] if sprob > 0 else [1/len(probs)]*len(probs)
+        a = random.choices(actions, weights=probs, k=1)[0]
 
-        st_next = mdp_aug.move_aug(st, a)
-        s_next = st_next[0]
+        # sample next augmented state from transition kernel (includes slip)
+        trans = mdp_aug.transitions_aug(st, a)  # dict: st2 -> p
+        st2s = list(trans.keys())
+        ps   = list(trans.values())
+        st_next = random.choices(st2s, weights=ps, k=1)[0]
 
-        base_traj.append(s_next)
-        aug_traj.append(st_next)
-
-        st, s = st_next, s_next
+        st = st_next
+        aug_traj.append(st)
+        base_traj.append(st[0])
 
     return base_traj, aug_traj
